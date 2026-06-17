@@ -1,10 +1,6 @@
-# gettingstartetwithpkgbase
+# Resources for presentations i am giving
 
-Resources for my Talk at the EuroBSDCon in Zagreb, 2025
+This repo contains Resources for my Talks at conferences etc.
 
-
-
-"slides.pdf" is containing the slides.
-
-"demo\_commands.md" is all the commands and some config files used from the live demo.
-
+2025: EuroBSDCon Zagreb, Getting started with pkgbase
+2026: BSDCan Ottawa, PKGBase in Production
