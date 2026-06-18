@@ -34,12 +34,8 @@ vi /usr/local/etc/nginx/nginx.conf
 server {
 	listen       80;
 	server_name builder;
-	location /FreeBSD:14:amd64 {
-			alias /usr/obj/usr/src/repo/FreeBSD:14:amd64/;
-			autoindex on;
-	}
-	location /FreeBSD:15:amd64 {
-			alias /usr/obj/usr/src/repo/FreeBSD:15:amd64/;
+	location / {
+			alias /usr/obj/usr/src/repo/;
 			autoindex on;
 	}
 ```
@@ -287,4 +283,14 @@ start and enter the jail
 ```
 service jail start pkgbase
 jexec pkgbase
+```
+
+# Poudriere pkgbase jail
+fetch via url
+```
+poudriere jail –c –j 16current –m pkgbase=latest –v 16 –U http://pkgbase-host.local
+```
+Build from local source tree
+```
+poudriere jail –c –B –j 16current –m src=/usr/src –b –v 16-CURRENT –K GENERIC
 ```
