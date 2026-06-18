@@ -2,12 +2,23 @@
 ```
 cd /usr/src
 git clone https://github.com/freebsd/freebsd-src.git /usr/src
-git checkout releng/15.1
+git checkout release/15.0.0
 ```
 Build the packages by compiling from source, using make packages to create base system packages.
 ```
-make -j8 buildworld && make -j8 buildkernel && make -j8 update-packages
+make -j8 buildkernel && make -j8 buildworld && make -j8 packages
 ```
+checkout the next release
+```
+git checkout release/15.0.0-p1
+```
+
+and use update-packages for that
+
+```
+make -j8 buildkernel && make -j8 buildworld && make -j8 update-packages
+```
+repeat for every release until the last recent.
 
 After building, the packages will get saved into 
 ```
@@ -219,4 +230,61 @@ shutdown -r now
 activate be permanently
 ```
 bectl activate 15
+```
+
+# Jail with base system packages
+create dataset
+```
+zfs create tank/foo
+```
+if packages are not signed, you can simply use the pkg rootdir option
+```
+pkg -r /tank/foo/ install FreeBSD-set-minimal-jail
+```
+enable jails on the host
+```
+sysrc jail_enable=YES
+```
+
+install FreeBSD-jail and FreeBSD-bsdconfig if using a minimal host
+```
+pkg install FreeBSD-jail FreeBSD-bsdconfig
+```
+
+else use bsdinstall like documented in jail(8) EXAMPLES
+
+```
+bsdinstall jail /tank/foo/
+```
+
+if you are using your own pkg configuration, give the BSDINSTALL_PKG_REPOS_DIR
+```
+env BSDINSTALL_PKG_REPOS_DIR=/usr/local/etc/pkg/repos/ bsdinstall jail /tank/foo/
+```
+
+create a pkg conf
+
+```
+vim /etc/jail.conf.d/pkgbase.conf
+```
+
+```
+pkgbase {
+  path = /zroot/jails/pkgbase;
+  mount.devfs;
+  host.hostname = pkgbase;
+  ip4 = inherit;
+  exec.start = "/bin/sh /etc/rc";
+  exec.stop = "/bin/sh /etc/rc.shutdown jail";
+}
+```
+
+copy resolv conf inside the jail
+```
+cp /etc/resolv.conf /zroot/jails/pkgbase/etc/
+```
+start and enter the jail
+```
+service jail start pkgbase
+jexec pkgbase
 ```
