@@ -51,10 +51,28 @@ Run pkgbasify script:
 ./pkgbasify.lua
 ```
 confirm conversion and creation of boot environment
-wait for it to finish
+wait for it to finish (27 seconds local)
 reboot
 ```
 shutdown -r now
+```
+
+remove not needed sets
+```
+pkg remove -f FreeBSD-set-devel FreeBSD-set-optional FreeBSD-set-tests FreeBSD-set-base
+pkg autoremove
+```
+install sshd
+```
+pkg install FreeBSD-ssh
+```
+Disable BACKUP_LIBRARIES in pkg.conf
+```
+vi /usr/local/etc/pkg.conf
+```
+
+```
+BACKUP_LIBRARIES=no
 ```
 
 # Patch level update
@@ -68,7 +86,6 @@ bectl create 150p10
 mkdir /mnt/upgrade
 bectl mount 150p10 /mnt/upgrade
 ```
-
 
 go to edit the configuration file (this is only needed for this demonstration purposes).
 ```

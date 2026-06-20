@@ -1,0 +1,91 @@
+---
+# pkgbase upgrade to 15.0
+# in developement, use carefully if you know what you are doing
+# upgrading using a boot environment
+# change the variables to the version required
+- name: update pkgbase packets
+  hosts: fatdb
+  remote_user: "root"
+  vars:
+    ignore_osversion: "true"
+    bectl_name: "150p10"
+    ABI:
+      ABI: "FreeBSD:15:amd64"
+    packages_pkg_upgrade_url: "pkg+https://pkg.FreeBSD.org"
+    packages_pkg_upgrade_url_release: "base_release_0"
+  tasks:
+  - name: create boot environment
+    ansible.builtin.shell: "bectl create {{ bectl_name }}"
+  - name: create be mount dir
+    ansible.builtin.file: 
+      path: "/mnt/upgrade"
+      state: directory
+  - name: mount be
+    ansible.builtin.shell: "bectl mount {{ bectl_name }} /mnt/upgrade"
+  - name: create pkg repos dir if not exists
+    ansible.builtin.file:
+      path: "/mnt/upgrade/usr/local/etc/pkg/repos/"
+      state: directory
+      owner: root
+      group: wheel
+  - name: copy upgrade.conf
+    ansible.builtin.template:
+      src: "upgrade.conf.j2"
+      dest: "/mnt/upgrade/usr/local/etc/pkg/repos/upgrade.conf"
+      owner: root
+      group: wheel
+      mode: '0644'
+
+  - name: force install minimal set
+    ansible.builtin.shell: "env ABI=FreeBSD:15:amd64 pkg-static -c /mnt/upgrade install -r freebsd-upgrade -y FreeBSD-set-minimal FreeBSD-set-kernels FreeBSD-ssh FreeBSD-console-tools FreeBSD-csh FreeBSD-inetd FreeBSD-jail FreeBSD-ntp FreeBSD-nvme-tools FreeBSD-xz FreeBSD-vi FreeBSD-bsdconfig FreeBSD-nfs"
+  - name: remove old base packages
+    ansible.builtin.shell: "pkg -c /mnt/upgrade/ remove -fy -g 'FreeBSD-*-14.3*'"
+  - name: force reinstall minimal set
+    ansible.builtin.shell: "env ABI=FreeBSD:15:amd64 pkg-static -c /mnt/upgrade install -r freebsd-upgrade -f -y FreeBSD-set-minimal FreeBSD-set-kernels FreeBSD-ssh FreeBSD-console-tools FreeBSD-csh FreeBSD-inetd FreeBSD-jail FreeBSD-ntp FreeBSD-nvme-tools FreeBSD-xz FreeBSD-vi FreeBSD-bsdconfig FreeBSD-nfs"
+
+  - name: upgrade FreeBSD Packets
+    community.general.pkgng:
+      name: "*"
+      state: latest
+      ignore_osver: "{{ ignore_osversion }}"
+      chroot: "/mnt/upgrade"
+    environment: "{{ ABI }}"
+
+  - name: disable upgrade repo
+    ansible.builtin.lineinfile:
+      path: "/mnt/upgrade/usr/local/etc/pkg/repos/upgrade.conf"
+      search_string: "enabled     = yes"
+      line: "        enabled     = no"
+  - name: activate boot env temporarily
+    ansible.builtin.shell: "bectl activate -t {{ bectl_name }}"
+  - name: reboot
+    ansible.builtin.reboot:
+      reboot_timeout: 300
+    throttle: 1
+  - name: activate boot env permanently
+    ansible.builtin.shell: "bectl activate {{ bectl_name }}"
+# If you are have overwritten FreeBSD and FreeBSD-kmods in /usr/local/etc/pkg/repos/FreeBSD.conf comment back in:
+  # - name: change ports config
+  #   ansible.builtin.lineinfile:
+  #     path: "/usr/local/etc/pkg/repos/FreeBSD.conf"
+  #     regexp: "^FreeBSD[-ports]*: {$"
+  #     line: "FreeBSD-ports: {"
+  #     state: present
+  # - name: change kmods config
+  #   ansible.builtin.lineinfile:
+  #     path: "/usr/local/etc/pkg/repos/FreeBSD.conf"
+  #     regexp: "^FreeBSD[-ports]*-kmods: {$"
+  #     line: "FreeBSD-ports-kmods: {"
+  #     state: present
+
+  - name: remove not needed ports
+    community.general.pkgng:
+      name: "{{ item }}"
+      state: absent
+      use_globs: true
+    loop: 
+      - "FreeBSD-*-lib32"
+      - "FreeBSD-*-dbg"
+      - "FreeBSD-*-dev"
+    ignore_errors: True
+# configure base configs like ntp.conf etc because they might have got overwritten
